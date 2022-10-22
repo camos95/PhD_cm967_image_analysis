@@ -19,7 +19,6 @@ from skimage.filters import gaussian
 from scipy.signal import find_peaks
 from skimage.transform import rotate
 
-
 # --------------------------------------------------------------
 
 # Function Defintions
@@ -49,7 +48,7 @@ def invert_nparray(nparray_x):
     return new_nparray_z
 
 # In order to process each FOV you need to easily access the information of all the images in the folder containing the images. 
-#To do so, create a Pandas DataFrame that contains all the images' info (directory, (lane - if applicable,) FOV, timepoint, colour_channel).
+# To do so, create a Pandas DataFrame that contains all the images' info (directory, (lane - if applicable,) FOV, timepoint, colour_channel).
 
 # CAREFUL: images have to be named like "xy000_T000_mCherry.png" for the following function to parse through them!
 
@@ -108,7 +107,11 @@ def source_image_info(ims_folder_directory,ims_format):
             cum_trench_counter += 1
         ims_df.drop('trench_cum', axis = 1, inplace = True)
         ims_df['trench_cum'] = pd.DataFrame(trench_cum_list)
-        
+        print("Dataframe with {:} rows and {:} columns has been created.".format(ims_df.shape[0],ims_df.shape[1]))
+        print("# FOVs:", len(ims_df['FOV'].unique()), 
+              "# trenches:", len(ims_df['trench'].unique()), 
+            "\n# timepoints/FOV:", len(ims_df['timepoint'].unique()), 
+            "\n# colour channels/timepoint/FOV:", len(ims_df['colour_channel'].unique()))
     return ims_df
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -161,12 +164,10 @@ def find_FOV_trench_peaks(PC_ims_info_df,im_timepoint,investigated_FOV,pixel_mic
     return PC_hor_intensity_profile,peaks_intensities
 
 def create_FOV_trench_mask(PC_image,investigated_FOV, FOV_peakdata,pixel_micron_conversion_factor,trench_distance_mcr, plot=False):
-    """
-    Out: np array of trench mask
+    """Out: np array of trench mask
     """
     # Define necessary MFD and imaging information:
     trench_distance_pixels = int(trench_distance_mcr/pixel_micron_conversion_factor)
-    
     # create rough trench mask:
     trench_mask = np.zeros(PC_image.shape)
     im_margin = 10
@@ -183,15 +184,12 @@ def create_FOV_trench_mask(PC_image,investigated_FOV, FOV_peakdata,pixel_micron_
 
 
 def find_merged_segm_FOV_trench_peaks(merged_currentFOV_segm_im,pixel_micron_conversion_factor,trench_distance_mcr,sigma, plot=False):
-    """
-    Out: np array of trench mask
+    """Out: peaks
     """
     merged_currentFOV_segm_im = gaussian(merged_currentFOV_segm_im, sigma = sigma, preserve_range=True)
-        
     test_line_first_quarter = int(merged_currentFOV_segm_im.shape[0]*0.25)
     test_line_middle = int(merged_currentFOV_segm_im.shape[0]*0.5)
     test_line_third_quarter = int(merged_currentFOV_segm_im.shape[0]*0.75)
-    
     def create_intensity_profile(segm_np_array,test_y_line):
         # initiate DataFrame:
         segm_hor_intensity_profile = pd.DataFrame(data=segm_np_array[test_y_line,:])
@@ -199,7 +197,6 @@ def find_merged_segm_FOV_trench_peaks(merged_currentFOV_segm_im,pixel_micron_con
         segm_hor_intensity_profile['index'] = segm_hor_intensity_profile['index'] * pixel_micron_conversion_factor
         segm_hor_intensity_profile.rename(columns={0: "intensity",'index':'position_micron'},inplace=True)
         return segm_hor_intensity_profile
-    
     segm_hor_intensity_profile_first_quarter = create_intensity_profile(merged_currentFOV_segm_im,test_line_first_quarter)
     segm_hor_intensity_profile_middle = create_intensity_profile(merged_currentFOV_segm_im,test_line_middle)
     segm_hor_intensity_profile_third_quarter = create_intensity_profile(merged_currentFOV_segm_im,test_line_third_quarter)
@@ -208,7 +205,6 @@ def find_merged_segm_FOV_trench_peaks(merged_currentFOV_segm_im,pixel_micron_con
     segm_hor_intensity_profile = segm_hor_intensity_profile_middle
     segm_hor_intensity_profile['intensity']= all_three_intensity_profiles.mean(axis=1)
     segm_hor_intensity_profile
-    
     # identify peaks:
     peaks = find_peaks(np.array(segm_hor_intensity_profile['intensity']), distance=trench_distance_mcr/pixel_micron_conversion_factor)
     peaks_intensities = segm_hor_intensity_profile.loc[peaks[0].tolist(),:]
